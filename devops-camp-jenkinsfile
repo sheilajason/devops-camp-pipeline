@@ -37,6 +37,4 @@ pipeline {
         }
     }
 }
-git config --global user.name "sheilajason"
-git config --global user.email sheila.d.jason@outlook.com
-git config credential.helper store
+
