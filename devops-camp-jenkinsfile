@@ -1,8 +1,8 @@
 pipeline {
     agent {
-    
         label 'jenkins-agent'
-    }environment {
+    }
+    environment {
         PIPELINE_HASH = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         HARBOR_REGISTRY = 'harbor.dev.afsmtddso.com'
         HARBOR_PROJECT = 'sjason-harbor-project'
@@ -22,7 +22,9 @@ pipeline {
             }
         }
         stage('Application docker build') {
-            steps {withCredentials([usernameColonPassword(credentialsId: 'sjason-harbor-auth', variable: 'HARBOR-AUTH')]) {
+            steps {
+                echo "Building application image"
+                withCredentials([usernameColonPassword(credentialsId: 'sjason-harbor-auth', variable: 'HARBOR-AUTH')]) {
                     script {
                         sh 'docker build -t $APP_IMAGE_NAME-$COMMIT_HASH -f ./app/Dockerfile ./afs-labs-student'
                         docker.withRegistry('https://$HARBOR_REGISTRY', 'sjason-harbor-auth') {
@@ -31,24 +33,25 @@ pipeline {
                         }
                     }
                 }
-                        }post {
+            }
+            post {
                 always {
                     echo "Clean local $APP_IMAGE_NAME image"
                     script {
                         try {
                             sh 'docker rmi $APP_IMAGE_NAME-$COMMIT_HASH:latest'
-                            sh 'docker rmi $HARBOR_REGISTRY/$HARBOR_PROJECT/$APP_IMAGE_NAME:$COMMIT_HASH-$PIPELINE_HASH'                            
+                            sh 'docker rmi $HARBOR_REGISTRY/$HARBOR_PROJECT/$APP_IMAGE_NAME:$COMMIT_HASH-$PIPELINE_HASH'
                         } catch (err) {
                             echo err.getMessage()
                         }
                     }
                 }
             }
-                echo "Building application image"
-            }
         }
         stage('Database docker build') {
-            steps {withCredentials([usernameColonPassword(credentialsId: 'sjason-harbor-auth', variable: 'HARBOR-AUTH')]) {
+            steps {
+                echo "Building database image"
+                withCredentials([usernameColonPassword(credentialsId: 'sjason-harbor-auth', variable: 'HARBOR-AUTH')]) {
                     script {
                         sh 'docker build -t $DB_IMAGE_NAME-$COMMIT_HASH -f ./db/Dockerfile ./afs-labs-student'
                         docker.withRegistry('https://$HARBOR_REGISTRY', 'sjason-harbor-auth') {
@@ -57,20 +60,19 @@ pipeline {
                         }
                     }
                 }
-                echo "Building database image"
-                post {
+            }
+            post {
                 always {
                     echo "Clean local $DB_IMAGE_NAME image"
                     script {
                         try {
                             sh 'docker rmi $DB_IMAGE_NAME-$COMMIT_HASH:latest'
-                            sh 'docker rmi $HARBOR_REGISTRY/$HARBOR_PROJECT/$DB_IMAGE_NAME:$COMMIT_HASH-$PIPELINE_HASH'                            
+                            sh 'docker rmi $HARBOR_REGISTRY/$HARBOR_PROJECT/$DB_IMAGE_NAME:$COMMIT_HASH-$PIPELINE_HASH'
                         } catch (err) {
                             echo err.getMessage()
                         }
                     }
                 }
-            }
             }
         }
         stage('Test'){
@@ -84,21 +86,10 @@ pipeline {
             }
         }
     }
-    post {post {
-                always {
-                    echo "Clean local $DB_IMAGE_NAME image"
-                    script {
-                        try {
-                            sh 'docker rmi $DB_IMAGE_NAME-$COMMIT_HASH:latest'
-                            sh 'docker rmi $HARBOR_REGISTRY/$HARBOR_PROJECT/$DB_IMAGE_NAME:$COMMIT_HASH-$PIPELINE_HASH'                            
-                        } catch (err) {
-                            echo err.getMessage()
-                        }
-                    }
-                }
-            }
+    post {
         cleanup {
             echo "Clean workspace"
             sh 'rm -rf .git ./*'
         }
-    
+    }
+}
